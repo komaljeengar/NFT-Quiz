@@ -28,7 +28,6 @@ function App() {
     axios
       .get("http://localhost:3001/api/quiz")
       .then((res) => setQuestions(res.data))
-      .catch(() => setError("Failed to load quiz"));
   }, []);
 
   const connectWallet = async () => {
