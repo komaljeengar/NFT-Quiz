@@ -5,7 +5,7 @@ const cors = require("cors");
 const path = require("path");
 
 const app = express();
-app.use(cors({ origin: ["http://localhost:3000", "http://localhost:5173", "https://*.vercel.app"] }));
+app.use(cors({ origin: ["http://localhost:3000", "http://localhost:5173"] }));
 app.use(express.json());
 
 // Initialize attempts file
@@ -137,8 +137,6 @@ app.post("/api/quiz/submit", async (req, res) => {
     res.status(500).json({ error: "Failed to process quiz" });
   }
 });
-
-module.exports = app;
 
 // Start server
 const PORT = process.env.PORT || 3001;
