@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "framework": null,
+  "functions": {
+    "index.js": {
+      "handler": "index.handler",
+      "runtime": "nodejs18.x",
+      "memory": 128
+    }
+  },
+  "builds": [
+    {
+      "src": "index.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "index.js"
+    }
+  ]
+}
