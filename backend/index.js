@@ -1,13 +1,19 @@
 const express = require("express");
 const axios = require("axios");
+const fs = require("fs");
 const cors = require("cors");
+const path = require("path");
 
 const app = express();
-app.use(cors({ origin: ["http://localhost:3000", "http://localhost:5173", "https://*.vercel.app"] }));
+app.use(cors({ origin: ["http://localhost:3000", "http://localhost:5173"] }));
 app.use(express.json());
 
-// In-memory attempts store
-let attempts = {};
+// Initialize attempts file
+const attemptsFile = path.join(__dirname, "attempts.json");
+if (!fs.existsSync(attemptsFile)) {
+  fs.writeFileSync(attemptsFile, "{}");
+}
+let attempts = JSON.parse(fs.readFileSync(attemptsFile));
 
 // In-memory store for current quiz questions
 let currentQuestions = [];
@@ -120,7 +126,8 @@ app.post("/api/quiz/submit", async (req, res) => {
     // Update attempts if passed
     if (score >= 80) {
       attempts[wallet] = now;
-      console.log(`Updated in-memory attempts for ${wallet.slice(0, 6)}...`);
+      fs.writeFileSync(attemptsFile, JSON.stringify(attempts, null, 2));
+      console.log(`Updated attempts.json for ${wallet.slice(0, 6)}...`);
       return res.json({ success: true, score });
     } else {
       return res.json({ success: false, score });
@@ -131,7 +138,6 @@ app.post("/api/quiz/submit", async (req, res) => {
   }
 });
 
-module.exports = app;
 // Start server
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {

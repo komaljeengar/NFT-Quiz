@@ -83,6 +83,8 @@ function App() {
     } finally {
       setMinting(false);
     }
+
+    
   };
 
   return (
