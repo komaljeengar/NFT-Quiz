@@ -5,7 +5,7 @@ const cors = require("cors");
 const path = require("path");
 
 const app = express();
-app.use(cors({ origin: ["http://localhost:3000", "http://localhost:5173"] })); // Explicit frontend origins
+app.use(cors({ origin: ["http://localhost:3000", "http://localhost:5173"] }));
 app.use(express.json());
 
 // Initialize attempts file
@@ -138,7 +138,7 @@ app.post("/api/quiz/submit", async (req, res) => {
   }
 });
 
-// Start server ok
+// Start server
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);

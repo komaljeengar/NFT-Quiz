@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { ethers } from "ethers";
 import axios from "axios";
 import Confetti from "react-confetti";
+import { ethers } from "ethers";
 
 function App() {
   const [wallet, setWallet] = useState(null);
@@ -9,22 +9,21 @@ function App() {
   const [answers, setAnswers] = useState({});
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
-  const [minting, setMinting] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [minting, setMinting] = useState(false);
 
-  const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
+  const contractAddress = "0xD942bd05cD24BB202AB8F0fF0b944003cC55B9b3"; 
   const contractABI = [
     {
       inputs: [{ internalType: "address", name: "to", type: "address" }],
       name: "mint",
       outputs: [],
       stateMutability: "nonpayable",
-      type: "function"
-    }
+      type: "function",
+    },
   ];
 
   useEffect(() => {
-    // Fetch quiz questions on load
     axios
       .get("http://localhost:3001/api/quiz")
       .then((res) => setQuestions(res.data))
@@ -33,11 +32,8 @@ function App() {
   const connectWallet = async () => {
     try {
       if (!window.ethereum) throw new Error("MetaMask not installed");
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      await provider.send("eth_requestAccounts", []); // Request wallet access
-      const signer = await provider.getSigner();
-      const address = await signer.getAddress();
-      setWallet(address);
+      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+      setWallet(accounts[0]);
       setError(null);
     } catch (err) {
       setError("Failed to connect wallet: " + err.message);
@@ -53,20 +49,17 @@ function App() {
       setError("Please connect wallet");
       return;
     }
-    if (Object.keys(answers).length < questions.length) {
+    if (Object.keys(answers).length < 5) {
       setError("Answer all questions");
       return;
     }
     try {
       setError(null);
-      const res = await axios.post("http://localhost:3001/api/quiz/submit", {
-        wallet,
-        answers
-      });
+      const res = await axios.post("http://localhost:3001/api/quiz/submit", { wallet, answers });
       setResult(res.data);
       if (res.data.success) {
         setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 5000); // Confetti for 5s
+        setTimeout(() => setShowConfetti(false), 5000);
       }
     } catch (err) {
       setError(err.response?.data.error || "Submission failed");
@@ -78,13 +71,13 @@ function App() {
     try {
       setMinting(true);
       setError(null);
+      if (!window.ethereum) throw new Error("MetaMask not installed");
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(contractAddress, contractABI, signer);
       const tx = await contract.mint(wallet);
-      await tx.wait();
-      setResult({ ...result, minted: true });
-      alert("NFT minted successfully!");
+      const receipt = await tx.wait();
+      setResult({ ...result, minted: true, txHash: receipt.hash });
     } catch (err) {
       setError("Minting failed: " + err.message);
     } finally {
@@ -93,77 +86,78 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center p-4">
       {showConfetti && <Confetti />}
-      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-4 text-center">EduMint Quiz</h1>
-        {!wallet ? (
+      <h1 className="text-3xl font-bold mb-6">EduMint Quiz</h1>
+      {!wallet ? (
+        <button
+          onClick={connectWallet}
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+        >
+          Connect MetaMask
+        </button>
+      ) : (
+        <p className="mb-4">Wallet: {wallet.slice(0, 6)}...{wallet.slice(-4)}</p>
+      )}
+      {error && <p className="text-red-500 mb-4">{error}</p>}
+      {questions.length > 0 && !result && (
+        <div className="w-full max-w-md bg-white p-6 rounded shadow">
+          {questions.map((q) => (
+            <div key={q.id} className="mb-4">
+              <p className="font-semibold" dangerouslySetInnerHTML={{ __html: q.question }} />
+              {q.answers.map((ans, i) => (
+                <label key={i} className="block">
+                  <input
+                    type="radio"
+                    name={`q${q.id}`}
+                    value={ans}
+                    onChange={() => handleAnswer(q.id, ans)}
+                    className="mr-2"
+                  />
+                  <span dangerouslySetInnerHTML={{ __html: ans }} />
+                </label>
+              ))}
+            </div>
+          ))}
           <button
-            onClick={connectWallet}
-            className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition"
+            onClick={submitQuiz}
+            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
           >
-            Connect MetaMask
+            Submit Quiz
           </button>
-        ) : (
-          <p className="text-sm text-gray-600 mb-4">
-            Wallet: {wallet.slice(0, 6)}...{wallet.slice(-4)}
+        </div>
+      )}
+      {result && (
+        <div className="text-center">
+          <p className={result.success ? "text-green-500" : "text-red-500"}>
+            {result.success
+              ? `Passed! Score: ${result.score}%`
+              : `Failed. Score: ${result.score}%. Try again tomorrow!`}
           </p>
-        )}
-        {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
-        {questions.length > 0 && !result && (
-          <div>
-            {questions.map((q) => (
-              <div key={q.id} className="mb-6">
-                <p
-                  className="font-semibold mb-2"
-                  dangerouslySetInnerHTML={{ __html: q.question }}
-                />
-                {q.answers.map((ans, i) => (
-                  <label key={i} className="block mb-1">
-                    <input
-                      type="radio"
-                      name={`q${q.id}`}
-                      value={ans}
-                      onChange={() => handleAnswer(q.id, ans)}
-                      className="mr-2 accent-blue-500"
-                    />
-                    <span dangerouslySetInnerHTML={{ __html: ans }} />
-                  </label>
-                ))}
-              </div>
-            ))}
+          {result.success && !result.minted && (
             <button
-              onClick={submitQuiz}
-              className="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600 transition"
+              onClick={mintNFT}
+              disabled={minting}
+              className="mt-4 bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 disabled:bg-gray-400"
             >
-              Submit Quiz
+              {minting ? "Minting..." : "Mint NFT"}
             </button>
-          </div>
-        )}
-        {result && (
-          <div className="text-center">
-            <p className="text-lg mb-4">
-              {result.success
-                ? `Passed! Score: ${result.score}%`
-                : `Failed. Score: ${result.score}%. Try again tomorrow!`}
-            </p>
-            {result.success && !result.minted && (
-              <button
-                onClick={mintNFT}
-                disabled={minting}
-                className="w-full bg-purple-500 text-white py-2 rounded hover:bg-purple-600 transition disabled:opacity-50"
+          )}
+          {result.minted && (
+            <p className="text-blue-500 mt-2">
+              NFT minted!{' '}
+              <a
+                href={`https://sepolia.etherscan.io/tx/${result.txHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
               >
-                {minting ? "Minting..." : "Mint NFT"}
-              </button>
-            )}
-            {result.minted && (
-              <p className="text-green-600 font-semibold">
-                NFT minted! Check your wallet or OpenSea testnet.
-              </p>
-            )}
-          </div>
-        )}
-      </div>
+                View on Etherscan
+              </a>
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
